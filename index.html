@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácora · Seguimiento de hallazgos cripto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0E1116;
+    --panel:#161B24;
+    --panel-2:#1C222E;
+    --border:#262D3A;
+    --text:#EDEFF3;
+    --text-muted:#8892A6;
+    --gold:#D4A857;
+    --gold-dim:rgba(212,168,87,0.15);
+    --up:#4FA37D;
+    --down:#C1554A;
+    --macro:#6C8EBF;
+    --regulatorio:#9B7EBD;
+    --liquidaciones:#C1554A;
+    --ballenas:#4FA3A3;
+    --adopcion:#4FA37D;
+    --otro:#8892A6;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .muted{color:var(--text-muted);}
+  a{color:var(--gold);}
+
+  header.top{
+    padding:22px 28px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  }
+  header.top .brand{display:flex;align-items:baseline;gap:10px;}
+  header.top .brand .mark{
+    width:30px;height:30px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #F0D9A0, var(--gold) 70%);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;color:var(--ink);font-size:15px;
+    flex-shrink:0;
+  }
+  header.top h1{font-size:20px;letter-spacing:0.2px;}
+  header.top .tagline{font-size:12.5px;color:var(--text-muted);}
+
+  main{max-width:1180px;margin:0 auto;padding:24px 28px 80px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+  .tab{
+    padding:9px 16px;border-radius:999px;border:1px solid var(--border);
+    background:var(--panel);color:var(--text-muted);font-size:13.5px;font-weight:600;
+    cursor:pointer;transition:all .15s ease;font-family:'Inter',sans-serif;
+  }
+  .tab:hover{border-color:var(--gold);color:var(--text);}
+  .tab.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+
+  .hero{
+    display:grid;grid-template-columns:1.4fr 1fr;gap:20px;margin-bottom:20px;
+  }
+  @media(max-width:860px){.hero{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px;
+  }
+  .price-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px;}
+  .price{font-size:34px;font-family:'Fraunces',serif;font-weight:600;}
+  .change{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;padding:2px 8px;border-radius:6px;}
+  .change.pos{color:var(--up);background:rgba(79,163,125,0.12);}
+  .change.neg{color:var(--down);background:rgba(193,85,74,0.12);}
+  .coin-name{font-size:13px;color:var(--text-muted);margin-top:2px;}
+
+  .range-selector{display:flex;gap:6px;margin:14px 0 10px;}
+  .range-btn{
+    background:transparent;border:1px solid var(--border);color:var(--text-muted);
+    padding:5px 12px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+  }
+  .range-btn.active{border-color:var(--gold);color:var(--gold);}
+
+  canvas#priceChart{max-height:320px;}
+
+  .config-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+  .config-row:last-child{border-bottom:none;}
+  .config-row label{font-size:13px;color:var(--text-muted);}
+  .config-row input[type=number]{
+    width:64px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:5px 8px;font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:right;
+  }
+
+  .notif-btn{
+    width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1px solid var(--gold);
+    background:transparent;color:var(--gold);font-weight:600;font-size:13px;cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .notif-btn.granted{background:var(--gold-dim);cursor:default;}
+  .notif-note{font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;}
+
+  section.timeline{margin-top:28px;}
+  section.timeline h2{font-size:18px;margin-bottom:4px;}
+  .timeline-sub{font-size:13px;color:var(--text-muted);margin-bottom:16px;}
+
+  .event{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:10px;
+  }
+  .event-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .event-date{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text-muted);}
+  .event-change{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;}
+  .analyze-btn{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:6px 14px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;
+  }
+  .analyze-btn:hover{border-color:var(--gold);}
+  .analyze-btn:disabled{opacity:0.5;cursor:wait;}
+
+  .event-body{margin-top:12px;font-size:13.5px;line-height:1.6;display:none;}
+  .event-body.show{display:block;}
+  .tag{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:5px;margin-right:8px;text-transform:uppercase;letter-spacing:0.4px;
+  }
+  .confidence{font-size:11.5px;color:var(--text-muted);margin-top:8px;}
+  .sources{margin-top:8px;font-size:12px;}
+  .sources a{display:block;margin-top:3px;text-decoration:none;}
+  .sources a:hover{text-decoration:underline;}
+  .error-inline{color:var(--down);font-size:13px;}
+
+  .banner{
+    background:rgba(193,85,74,0.1);border:1px solid var(--down);color:#E8A69F;
+    padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;
+  }
+  .banner.show{display:block;}
+
+  footer{
+    max-width:1180px;margin:0 auto;padding:0 28px 40px;font-size:12px;color:var(--text-muted);
+    line-height:1.6;border-top:1px solid var(--border);padding-top:18px;
+  }
+
+  .spinner{
+    display:inline-block;width:12px;height:12px;border:2px solid var(--border);
+    border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;
+    vertical-align:middle;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="mark">₿</span>
+    <div>
+      <h1>Bitácora</h1>
+      <div class="tagline">Hallazgos y factores detrás de los movimientos de precio</div>
+    </div>
+  </div>
+  <button class="notif-btn" id="notifBtn" style="width:auto;">Activar notificaciones del navegador</button>
+</header>
+
+<main>
+  <div class="banner" id="globalBanner"></div>
+
+  <div class="tabs" id="coinTabs"></div>
+
+  <div class="hero">
+    <div class="panel">
+      <div class="price-row">
+        <span class="price mono" id="currentPrice">—</span>
+        <span class="change mono" id="currentChange">—</span>
+      </div>
+      <div class="coin-name" id="coinName">Cargando...</div>
+
+      <div class="range-selector">
+        <button class="range-btn" data-days="30">30 días</button>
+        <button class="range-btn active" data-days="90">90 días</button>
+        <button class="range-btn" data-days="365">1 año</button>
+        <button class="range-btn" data-days="max">Todo el historial</button>
+      </div>
+
+      <canvas id="priceChart"></canvas>
+      <div class="notif-note" id="lastUpdated" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="font-size:15px;margin-bottom:10px;">Acceso al análisis</h3>
+      <div class="config-row" style="border-bottom:none;">
+        <input type="password" id="appPasswordInput" placeholder="Contraseña de acceso" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;">
+      </div>
+      <div class="notif-note">
+        Solo hace falta para usar "Analizar hallazgo" (esto consume la cuota de la API). Ver los precios e historial es libre para cualquiera que entre al sitio.
+      </div>
+
+      <h3 style="font-size:15px;margin:20px 0 10px;">Sensibilidad de detección</h3>
+      <div class="config-row">
+        <label>Umbral diario (%)</label>
+        <input type="number" id="thresholdInput" step="0.5" min="0.5">
+      </div>
+      <div class="config-row">
+        <label>Ventana de análisis</label>
+        <span class="mono muted" id="windowLabel" style="font-size:13px;">día a día</span>
+      </div>
+      <div class="notif-note">
+        Cuanto más bajo el umbral, más movimientos se marcan como "hallazgo". BTC suele necesitar un umbral menor que las altcoins porque, en términos relativos, se mueve menos.
+      </div>
+
+      <h3 style="font-size:15px;margin:20px 0 6px;">Notificaciones</h3>
+      <div class="notif-note">
+        Si activás las notificaciones del navegador, vas a recibir un aviso nativo cuando un hallazgo analizado supere 75 puntos de relevancia, mientras esta pestaña esté abierta.
+      </div>
+      <div class="notif-note" style="margin-top:10px;opacity:0.7;">
+        Envío por email / push a celular fuera del navegador todavía no está conectado — eso requiere un backend con Resend/FCM. Por ahora esta versión es 100% local, corriendo en tu navegador.
+      </div>
+    </div>
+  </div>
+
+  <section class="timeline">
+    <h2>Hallazgos detectados</h2>
+    <div class="timeline-sub">Movimientos de precio que superan el umbral configurado. Analizá cada uno para que la IA busque en la web qué pudo haberlo causado.</div>
+    <div id="eventList"><div class="muted">Cargando datos de mercado...</div></div>
+  </section>
+</main>
+
+<footer>
+  <p><strong>Aviso:</strong> los precios provienen de CoinGecko (agregación de exchanges reales) y son datos históricos verificables. Los "factores asociados" que genera la IA son <em>hipótesis de correlación temporal</em>, no causalidad comprobada — el mercado cripto tiene múltiples fuerzas actuando al mismo tiempo. Esta herramienta es de uso informativo y personal; no constituye asesoramiento financiero ni recomendación de inversión.</p>
+</footer>
+
+<script>
+const STABLECOIN_IDS = new Set(['tether','usd-coin','dai','first-digital-usd','true-usd','usde','ethena-usde','paypal-usd','binance-usd','frax','usdd','gemini-dollar']);
+const CATEGORY_COLORS = {macro:'var(--macro)', regulatorio:'var(--regulatorio)', liquidaciones:'var(--liquidaciones)', ballenas:'var(--ballenas)', adopcion:'var(--adopcion)', otro:'var(--otro)'};
+const CATEGORY_LABELS = {macro:'Macro', regulatorio:'Regulatorio', liquidaciones:'Liquidaciones', ballenas:'Ballenas', adopcion:'Adopción', otro:'Otro'};
+const DEFAULT_THRESHOLDS = {bitcoin:3, ethereum:5};
+const DEFAULT_THRESHOLD_FALLBACK = 6;
+
+let state = {
+  coins: [],
+  selectedId: 'bitcoin',
+  days: 90,
+  thresholds: {},
+  historyCache: {},
+  analysisCache: {},
+  chart: null,
+  notifGranted: false,
+};
+
+function showBanner(msg){
+  const b = document.getElementById('globalBanner');
+  b.textContent = msg;
+  b.classList.add('show');
+}
+function hideBanner(){
+  document.getElementById('globalBanner').classList.remove('show');
+}
+
+async function fetchJSON(url){
+  const res = await fetch(url);
+  if(res.status === 429){
+    throw new Error('CoinGecko está limitando las solicitudes por un momento. Esperá unos segundos y volvé a intentar.');
+  }
+  if(!res.ok){
+    throw new Error('No se pudo obtener datos de mercado (' + res.status + ').');
+  }
+  return res.json();
+}
+
+async function loadTopCoins(){
+  try{
+    hideBanner();
+    const markets = await fetchJSON('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false');
+    const filtered = markets.filter(c => !STABLECOIN_IDS.has(c.id));
+    state.coins = filtered.slice(0,5);
+    if(!state.coins.find(c=>c.id==='bitcoin') && filtered.find(c=>c.id==='bitcoin')){
+      state.coins[state.coins.length-1] = filtered.find(c=>c.id==='bitcoin');
+    }
+    state.coins.forEach(c=>{
+      state.thresholds[c.id] = DEFAULT_THRESHOLDS[c.id] || DEFAULT_THRESHOLD_FALLBACK;
+    });
+    renderTabs();
+    await selectCoin('bitcoin');
+  }catch(err){
+    showBanner(err.message);
+    document.getElementById('eventList').innerHTML = '<div class="error-inline">No se pudieron cargar las cinco principales criptomonedas. ' + err.message + '</div>';
+  }
+}
+
+function renderTabs(){
+  const box = document.getElementById('coinTabs');
+  box.innerHTML = '';
+  state.coins.forEach(c=>{
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (c.id===state.selectedId ? ' active' : '');
+    btn.textContent = c.symbol.toUpperCase();
+    btn.onclick = ()=>selectCoin(c.id);
+    box.appendChild(btn);
+  });
+}
+
+async function selectCoin(id){
+  state.selectedId = id;
+  renderTabs();
+  const coin = state.coins.find(c=>c.id===id);
+  if(coin){
+    document.getElementById('coinName').textContent = coin.name + ' · rank #' + coin.market_cap_rank;
+    document.getElementById('currentPrice').textContent = formatUSD(coin.current_price);
+    const chg = coin.price_change_percentage_24h;
+    const chEl = document.getElementById('currentChange');
+    if(typeof chg === 'number'){
+      chEl.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '% (24h)';
+      chEl.className = 'change mono ' + (chg>=0?'pos':'neg');
+    }
+  }
+  document.getElementById('thresholdInput').value = state.thresholds[id];
+  await loadHistoryAndRender(id, state.days);
+}
+
+function normalizeToDaily(rawPrices){
+  // CoinGecko devuelve distinta granularidad según el rango (horaria para rangos cortos,
+  // diaria para rangos largos). Nos quedamos con el último valor de cada día calendario
+  // para tener una serie consistente día a día sin importar qué granularidad vino.
+  const byDay = new Map();
+  rawPrices.forEach(([ts, price])=>{
+    const dayKey = new Date(ts).toISOString().slice(0,10);
+    byDay.set(dayKey, [ts, price]); // el último que pisa para ese día queda
+  });
+  return Array.from(byDay.values()).sort((a,b)=>a[0]-b[0]);
+}
+
+async function loadHistoryAndRender(id, days, forceRefresh){
+  document.getElementById('eventList').innerHTML = '<div class="muted"><span class="spinner"></span>Buscando movimientos relevantes...</div>';
+  try{
+    hideBanner();
+    const cacheKey = id + '_' + days;
+    let entry = state.historyCache[cacheKey];
+    const cacheAgeMs = entry ? Date.now() - entry.fetchedAt : Infinity;
+    if(!entry || forceRefresh || cacheAgeMs > 30*60*1000){ // recache si pasaron más de 30 min
+      const raw = await fetchJSON(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`);
+      entry = { data: raw, fetchedAt: Date.now() };
+      state.historyCache[cacheKey] = entry;
+    }
+    const rawPrices = entry.data.prices || [];
+    if(rawPrices.length < 2){
+      throw new Error('CoinGecko devolvió muy pocos puntos de precio para este rango.');
+    }
+    const prices = normalizeToDaily(rawPrices);
+    const anomalies = computeAnomalies(prices, state.thresholds[id]);
+    renderChart(prices, anomalies);
+    renderEventList(id, anomalies);
+    document.getElementById('lastUpdated').textContent = 'Último dato: ' + new Date(prices[prices.length-1][0]).toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'}) + ' · actualizado ' + new Date(entry.fetchedAt).toLocaleTimeString('es-AR');
+  }catch(err){
+    const msg = err.message === 'Failed to fetch'
+      ? 'No se pudo conectar con CoinGecko. Si abriste este archivo con doble clic, probá servirlo con un servidor local (ver instrucciones abajo del todo) en vez de abrirlo directo desde el disco.'
+      : err.message;
+    showBanner(msg);
+    document.getElementById('eventList').innerHTML = '<div class="error-inline">'+msg+'</div>';
+  }
+}
+
+function computeAnomalies(prices, thresholdPct){
+  const points = [];
+  for(let i=1;i<prices.length;i++){
+    const prevP = prices[i-1][1];
+    const curP = prices[i][1];
+    if(!prevP) continue;
+    const pct = ((curP - prevP) / prevP) * 100;
+    if(Math.abs(pct) >= thresholdPct){
+      points.push({
+        index: i,
+        date: new Date(prices[i][0]),
+        pct: pct,
+        priceBefore: prevP,
+        priceAfter: curP,
+      });
+    }
+  }
+  points.sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct));
+  return points.slice(0,8).sort((a,b)=>a.date-b.date);
+}
+
+function renderChart(prices, anomalies){
+  const anomalyIndexes = new Set(anomalies.map(a=>a.index));
+  const labels = prices.map(p => new Date(p[0]).toLocaleDateString('es-AR',{month:'short',day:'numeric'}));
+  const values = prices.map(p => p[1]);
+
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if(state.chart) state.chart.destroy();
+
+  state.chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        data: values,
+        borderColor:'#D4A857',
+        borderWidth:1.6,
+        pointRadius: values.map((_,i)=> anomalyIndexes.has(i) ? 5 : 0),
+        pointBackgroundColor: values.map((_,i)=> anomalyIndexes.has(i) ? '#D4A857' : 'transparent'),
+        pointBorderColor: '#0E1116',
+        pointBorderWidth: 1.5,
+        fill:true,
+        backgroundColor:'rgba(212,168,87,0.06)',
+        tension:0.15,
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false},
+        tooltip:{
+          callbacks:{ label: (c)=> '$'+Number(c.raw).toLocaleString('en-US',{maximumFractionDigits:2}) }
+        }
+      },
+      scales:{
+        x:{ ticks:{ color:'#8892A6', maxTicksLimit:10, font:{family:'IBM Plex Mono',size:10} }, grid:{color:'#262D3A'} },
+        y:{ ticks:{ color:'#8892A6', font:{family:'IBM Plex Mono',size:10}, callback:(v)=>'$'+Number(v).toLocaleString('en-US') }, grid:{color:'#262D3A'} }
+      }
+    }
+  });
+}
+
+function renderEventList(coinId, anomalies){
+  const box = document.getElementById('eventList');
+  if(anomalies.length===0){
+    box.innerHTML = '<div class="muted">No se detectaron movimientos por encima del umbral configurado en este rango. Probá bajar el umbral o ampliar el rango de días.</div>';
+    return;
+  }
+  box.innerHTML = '';
+  anomalies.forEach((a, idx)=>{
+    const key = coinId + '_' + a.date.toISOString().slice(0,10);
+    const cached = state.analysisCache[key];
+    const el = document.createElement('div');
+    el.className = 'event';
+    el.innerHTML = `
+      <div class="event-head">
+        <div>
+          <div class="event-date">${a.date.toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'})}</div>
+          <div class="event-change" style="color:${a.pct>=0?'var(--up)':'var(--down)'}">${a.pct>=0?'+':''}${a.pct.toFixed(2)}% · $${a.priceBefore.toFixed(0)} → $${a.priceAfter.toFixed(0)}</div>
+        </div>
+        <button class="analyze-btn" data-key="${key}">${cached ? 'Ver análisis' : 'Analizar hallazgo'}</button>
+      </div>
+      <div class="event-body ${cached?'show':''}" id="body_${key}">${cached ? renderAnalysisHTML(cached) : ''}</div>
+    `;
+    box.appendChild(el);
+    const btn = el.querySelector('.analyze-btn');
+    btn.onclick = ()=> handleAnalyzeClick(coinId, a, key, btn);
+  });
+}
+
+function renderAnalysisHTML(result){
+  const color = CATEGORY_COLORS[result.category] || CATEGORY_COLORS.otro;
+  const label = CATEGORY_LABELS[result.category] || 'Otro';
+  let sourcesHTML = '';
+  if(result.sources && result.sources.length){
+    sourcesHTML = '<div class="sources">' + result.sources.slice(0,3).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.title}</a>`).join('') + '</div>';
+  }
+  return `
+    <span class="tag" style="background:${color}22;color:${color};">${label}</span>
+    <span style="font-weight:600;">${result.headline || ''}</span>
+    <p style="margin:8px 0 0;">${result.explanation || ''}</p>
+    <div class="confidence">Relevancia estimada: ${result.confidence ?? '—'}/100 · esto es una hipótesis de correlación, no una causa confirmada.</div>
+    ${sourcesHTML}
+  `;
+}
+
+async function handleAnalyzeClick(coinId, anomaly, key, btn){
+  if(state.analysisCache[key]){
+    const body = document.getElementById('body_'+key);
+    body.classList.toggle('show');
+    return;
+  }
+  const appPassword = document.getElementById('appPasswordInput').value.trim();
+  const body = document.getElementById('body_'+key);
+  if(!appPassword){
+    body.classList.add('show');
+    body.innerHTML = '<span class="error-inline">Falta la contraseña de acceso. Pegala en el panel de la derecha ("Acceso al análisis") y volvé a intentar.</span>';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Buscando...';
+  body.classList.add('show');
+  body.innerHTML = '<span class="muted">Consultando fuentes de noticias para esa fecha...</span>';
+
+  const coin = state.coins.find(c=>c.id===coinId);
+  const dateStr = anomaly.date.toISOString().slice(0,10);
+  const prompt = `Sos un analista financiero especializado en criptomonedas. El ${dateStr} el precio de ${coin.name} (${coin.symbol.toUpperCase()}) tuvo un movimiento de ${anomaly.pct.toFixed(2)}% (de $${anomaly.priceBefore.toFixed(0)} a $${anomaly.priceAfter.toFixed(0)}).
+
+Buscá en la web noticias, eventos macroeconómicos, liquidaciones de derivados, movimientos de grandes tenedores ("ballenas"), decisiones regulatorias o anuncios de adopción institucional ocurridos entre 2 días antes y 1 día después de esa fecha que puedan explicar ese movimiento.
+
+Respondé ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después, con este formato exacto:
+{"category":"macro|regulatorio|liquidaciones|ballenas|adopcion|otro","headline":"titular corto en español (max 10 palabras)","explanation":"2-3 frases en español explicando el posible factor, en tono neutral y aclarando que es una correlación temporal","confidence":numero_0_a_100,"sources":[{"title":"nombre de la fuente","url":"https://..."}]}`;
+
+  try{
+    let response;
+    try{
+      response = await fetch('/api/analyze', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-app-password': appPassword
+        },
+        body: JSON.stringify({ prompt })
+      });
+    }catch(networkErr){
+      throw new Error('No se pudo conectar con el servidor de análisis. Revisá tu conexión a internet.');
+    }
+    if(response.status === 401){
+      throw new Error('Contraseña de acceso incorrecta.');
+    }
+    if(response.status === 429){
+      throw new Error('Se alcanzó el límite de solicitudes. Esperá un momento y volvé a intentar.');
+    }
+    const payload = await response.json().catch(()=> ({}));
+    if(!response.ok){
+      throw new Error(payload.error || ('El servidor de análisis respondió con un error (' + response.status + ').'));
+    }
+    const text = payload.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch){
+      throw new Error('No se pudo interpretar la respuesta del análisis.');
+    }
+    const result = JSON.parse(jsonMatch[0]);
+    state.analysisCache[key] = result;
+    body.innerHTML = renderAnalysisHTML(result);
+    btn.textContent = 'Ver análisis';
+    btn.disabled = false;
+
+    if(result.confidence >= 75 && state.notifGranted){
+      new Notification('Hallazgo relevante: ' + coin.name, {
+        body: result.headline + ' (' + dateStr + ')',
+      });
+    }
+  }catch(err){
+    body.innerHTML = '<span class="error-inline">' + err.message + ' — probá de nuevo en unos segundos.</span>';
+    btn.textContent = 'Reintentar';
+    btn.disabled = false;
+  }
+}
+
+function formatUSD(n){
+  if(typeof n !== 'number') return '—';
+  return '$' + n.toLocaleString('en-US', {maximumFractionDigits: n<10?4:2});
+}
+
+// Range selector
+document.querySelectorAll('.range-btn').forEach(btn=>{
+  btn.onclick = async ()=>{
+    document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.days = btn.dataset.days === 'max' ? 'max' : parseInt(btn.dataset.days,10);
+    await loadHistoryAndRender(state.selectedId, state.days);
+  };
+});
+
+// Threshold input
+document.getElementById('thresholdInput').addEventListener('change', async (e)=>{
+  const val = parseFloat(e.target.value);
+  if(isNaN(val) || val<=0) return;
+  state.thresholds[state.selectedId] = val;
+  await loadHistoryAndRender(state.selectedId, state.days);
+});
+
+// Notifications
+const notifBtn = document.getElementById('notifBtn');
+function updateNotifBtn(){
+  if(!('Notification' in window)){
+    notifBtn.textContent = 'Notificaciones no soportadas en este navegador';
+    notifBtn.disabled = true;
+    return;
+  }
+  if(Notification.permission === 'granted'){
+    state.notifGranted = true;
+    notifBtn.textContent = 'Notificaciones activadas ✓';
+    notifBtn.classList.add('granted');
+  }
+}
+notifBtn.onclick = async ()=>{
+  if(!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  if(perm === 'granted'){
+    state.notifGranted = true;
+    updateNotifBtn();
+    new Notification('Bitácora', {body:'Vas a recibir un aviso cuando se detecte un hallazgo de alta relevancia.'});
+  }
+};
+updateNotifBtn();
+
+// Auto-actualización: precio/24h cada 5 min, y recarga completa del historial cada 30 min
+// (recacheamos vía loadHistoryAndRender, que ya respeta el cache de 30 min salvo forceRefresh)
+setInterval(async ()=>{
+  try{
+    const markets = await fetchJSON('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false');
+    const filtered = markets.filter(c => !STABLECOIN_IDS.has(c.id));
+    state.coins = filtered.slice(0,5);
+    if(!state.coins.find(c=>c.id==='bitcoin') && filtered.find(c=>c.id==='bitcoin')){
+      state.coins[state.coins.length-1] = filtered.find(c=>c.id==='bitcoin');
+    }
+    renderTabs();
+    const coin = state.coins.find(c=>c.id===state.selectedId);
+    if(coin){
+      document.getElementById('currentPrice').textContent = formatUSD(coin.current_price);
+      const chg = coin.price_change_percentage_24h;
+      const chEl = document.getElementById('currentChange');
+      if(typeof chg === 'number'){
+        chEl.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '% (24h)';
+        chEl.className = 'change mono ' + (chg>=0?'pos':'neg');
+      }
+    }
+  }catch(e){ /* fallo silencioso en el ticker de fondo, no interrumpe la vista */ }
+}, 5*60*1000);
+
+setInterval(()=>{
+  loadHistoryAndRender(state.selectedId, state.days, true);
+}, 30*60*1000);
+
+// init
+loadTopCoins();
+</script>
+</body>
+</html>
